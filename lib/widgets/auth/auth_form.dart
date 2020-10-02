@@ -28,7 +28,9 @@ class _AuthFormState extends State<AuthForm> {
   File _userImageFile;
 
   void _pickedImage(File image) {
-    _userImageFile = image;
+    setState(() {
+      _userImageFile = image;
+    });
   }
 
   void _trySubmit() {
