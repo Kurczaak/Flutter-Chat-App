@@ -1,24 +1,57 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import '../pickers/user_image_picker.dart';
 
 class AuthForm extends StatefulWidget {
+  final void Function(
+    String email,
+    String password,
+    String username,
+    bool isLogin,
+    File image,
+    BuildContext ctx,
+  ) submitAuthForm;
+  final bool isLoading;
+
+  AuthForm(this.submitAuthForm, this.isLoading);
+
   @override
   _AuthFormState createState() => _AuthFormState();
 }
 
 class _AuthFormState extends State<AuthForm> {
   final _formKey = GlobalKey<FormState>();
-  String _userEmail = '';
-  String _userName = '';
-  String _userPassword = '';
+  var _isLogin = true;
+  var _userEmail = '';
+  var _userName = '';
+  var _userPassword = '';
+  File _userImageFile;
+
+  void _pickedImage(File image) {
+    _userImageFile = image;
+  }
 
   void _trySubmit() {
     final isValid = _formKey.currentState.validate();
     FocusScope.of(context).unfocus();
+    if (_userImageFile == null && !_isLogin) {
+      Scaffold.of(context).showSnackBar(SnackBar(
+        content: Text('Please pick an image'),
+        backgroundColor: Theme.of(context).errorColor,
+      ));
+      return;
+    }
+
     if (isValid) {
       _formKey.currentState.save();
-      print(_userEmail);
-      print(_userName);
-      print(_userPassword);
+      widget.submitAuthForm(
+        _userEmail.trim(),
+        _userPassword.trim(),
+        _userName.trim(),
+        _isLogin,
+        _userImageFile,
+        context,
+      );
     }
   }
 
@@ -35,7 +68,9 @@ class _AuthFormState extends State<AuthForm> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (!_isLogin) UserImagePicker(_pickedImage),
                     TextFormField(
+                      key: ValueKey('email'),
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         labelText: 'Email address',
@@ -50,21 +85,24 @@ class _AuthFormState extends State<AuthForm> {
                           return null;
                       },
                     ),
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Username',
+                    if (!_isLogin)
+                      TextFormField(
+                        key: ValueKey('username'),
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                        ),
+                        onSaved: (newValue) {
+                          _userName = newValue;
+                        },
+                        validator: (value) {
+                          if (value.isEmpty || value.length < 4)
+                            return 'Please enter at least 4 characters';
+                          else
+                            return null;
+                        },
                       ),
-                      onSaved: (newValue) {
-                        _userName = newValue;
-                      },
-                      validator: (value) {
-                        if (value.isEmpty || value.length < 4)
-                          return 'Please enter at least 4 characters';
-                        else
-                          return null;
-                      },
-                    ),
                     TextFormField(
+                      key: ValueKey('password'),
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'Password',
@@ -80,15 +118,25 @@ class _AuthFormState extends State<AuthForm> {
                       },
                     ),
                     SizedBox(height: 12),
-                    RaisedButton(
-                      child: Text('Login'),
-                      onPressed: _trySubmit,
-                    ),
-                    FlatButton(
-                      textColor: Theme.of(context).primaryColor,
-                      child: Text('Create new account'),
-                      onPressed: () {},
-                    ),
+                    if (widget.isLoading) CircularProgressIndicator(),
+                    if (!widget.isLoading)
+                      RaisedButton(
+                        textColor: Colors.white,
+                        child: Text(_isLogin ? 'Login' : 'Signup'),
+                        onPressed: _trySubmit,
+                      ),
+                    if (!widget.isLoading)
+                      FlatButton(
+                        textColor: Theme.of(context).primaryColor,
+                        child: Text(_isLogin
+                            ? 'Create new account'
+                            : 'Already have an account'),
+                        onPressed: () {
+                          setState(() {
+                            _isLogin = !_isLogin;
+                          });
+                        },
+                      ),
                   ],
                 )),
           ),
